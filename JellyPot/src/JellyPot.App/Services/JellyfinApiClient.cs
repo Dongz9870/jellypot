@@ -17,7 +17,6 @@ public sealed class JellyfinApiClient(HttpClient httpClient)
         _server = settings;
         _server.BaseUrl = NormalizeBaseUrl(settings.BaseUrl);
         _accessToken = accessToken;
-        _httpClient.Timeout = TimeSpan.FromSeconds(20);
     }
 
     public async Task<JellyfinServerInfo> GetPublicInfoAsync(CancellationToken cancellationToken = default) =>
@@ -53,6 +52,26 @@ public sealed class JellyfinApiClient(HttpClient httpClient)
         foreach (var movie in result.Items)
             movie.PosterUrl = BuildImageUrl(movie.Id, movie.ImageTags.GetValueOrDefault("Primary"), 380);
         return new MoviePage(result.Items, result.TotalRecordCount, result.StartIndex);
+    }
+
+    public async Task<IReadOnlyList<JellyfinMovie>> GetEpisodesAsync(string userId, string seriesId, CancellationToken cancellationToken = default)
+    {
+        var parameters = new Dictionary<string, string>
+        {
+            ["ParentId"] = seriesId,
+            ["Recursive"] = "true",
+            ["IncludeItemTypes"] = "Episode",
+            ["EnableUserData"] = "true",
+            ["Fields"] = "Path,Overview,Genres,MediaSources,MediaStreams,ProviderIds,DateCreated",
+            ["SortBy"] = "ParentIndexNumber,IndexNumber,SortName",
+            ["SortOrder"] = "Ascending",
+            ["Limit"] = "10000"
+        };
+        var query = string.Join("&", parameters.Select(x => $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value)}"));
+        var result = await SendAsync<QueryResult<JellyfinMovie>>(HttpMethod.Get,
+            $"/Users/{Uri.EscapeDataString(userId)}/Items?{query}", null, true, cancellationToken);
+        return result.Items.OrderBy(item => item.ParentIndexNumber ?? 0)
+            .ThenBy(item => item.IndexNumber ?? 0).ThenBy(item => item.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
     public string BuildImageUrl(string itemId, string? tag, int maxWidth)

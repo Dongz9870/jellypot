@@ -44,6 +44,10 @@ public sealed class JellyfinMovie
     public string Type { get; set; } = "Movie";
     public string Name { get; set; } = string.Empty;
     public string? OriginalTitle { get; set; }
+    public string? SeriesName { get; set; }
+    public string? SeasonName { get; set; }
+    public int? ParentIndexNumber { get; set; }
+    public int? IndexNumber { get; set; }
     public int? ProductionYear { get; set; }
     public string? Overview { get; set; }
     public double? CommunityRating { get; set; }
@@ -59,6 +63,8 @@ public sealed class JellyfinMovie
 
     [JsonIgnore] public string? PosterUrl { get; set; }
     [JsonIgnore] public bool IsLocal { get; set; }
+    [JsonIgnore] public bool IsSeries => string.Equals(Type, "Series", StringComparison.OrdinalIgnoreCase);
+    [JsonIgnore] public List<JellyfinMovie> LocalEpisodes { get; set; } = [];
     [JsonIgnore] public string YearText => ProductionYear?.ToString() ?? "年份未知";
     [JsonIgnore] public string RatingText => CommunityRating is > 0 ? CommunityRating.Value.ToString("0.0") : "—";
     [JsonIgnore] public string DurationText => RunTimeTicks is > 0 ? $"{TimeSpan.FromTicks(RunTimeTicks.Value).TotalMinutes:0} 分钟" : "时长未知";
@@ -73,11 +79,15 @@ public sealed class JellyfinMovie
         .FirstOrDefault();
     [JsonIgnore] public string ResolutionText => VideoResolution.GetLabel(BestVideoStream);
     [JsonIgnore] public string ResolutionDetailText => VideoResolution.GetDescription(BestVideoStream);
+    [JsonIgnore] public bool HasResolution => BestVideoStream?.Width is > 0 || BestVideoStream?.Height is > 0;
     [JsonIgnore] public string DynamicRangeText => VideoDynamicRange.GetLabel(BestVideoStream);
     [JsonIgnore] public string DynamicRangeDetailText => VideoDynamicRange.GetDescription(BestVideoStream);
     [JsonIgnore] public bool HasDynamicRange => VideoDynamicRange.IsKnown(BestVideoStream);
     [JsonIgnore] public bool HasBluRay => VideoMediaFormat.IsBluRay(this);
     [JsonIgnore] public string BluRayDetailText => VideoMediaFormat.GetBluRayDescription(this);
+    [JsonIgnore] public string EpisodeNumberText => ParentIndexNumber is > 0 && IndexNumber is > 0
+        ? $"S{ParentIndexNumber:00}E{IndexNumber:00}"
+        : IndexNumber is > 0 ? $"第 {IndexNumber} 集" : "单集";
 }
 
 public sealed class JellyfinUserData

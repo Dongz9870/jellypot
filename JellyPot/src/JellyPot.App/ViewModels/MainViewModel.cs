@@ -23,6 +23,8 @@ public sealed class MainViewModel : ObservableObject
     private string _userDisplayName = "未登录";
     private string _pageTitle = "登录";
     private MediaCategory _activeCategory = MediaCategory.Movies();
+    private string _userId = string.Empty;
+    private bool _demoMode;
 
     public MainViewModel(JellyfinApiClient apiClient, SettingsService settingsService, CredentialService credentialService, PathMappingService pathMappingService, PotPlayerService potPlayerService, LocalMediaScanService localMediaScanService, DialogService dialogService)
     {
@@ -120,9 +122,11 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task EnterLibraryAsync(string userId, bool demoMode)
     {
+        _userId = userId;
+        _demoMode = demoMode;
         _activeCategory = NavigationCategories.FirstOrDefault() ?? MediaCategory.Movies();
         _library = new LibraryViewModel(_apiClient, _settings, _settingsService, _localMediaScanService, userId, _activeCategory, demoMode);
-        _library.MovieOpened += (_, movie) => ShowDetails(movie);
+        _library.MovieOpened += (_, movie) => _ = ShowDetailsAsync(movie);
         IsAuthenticated = true;
         ShowLibrary();
         await _library.LoadAsync();
@@ -189,7 +193,8 @@ public sealed class MainViewModel : ObservableObject
         await _settingsService.SaveAsync(_settings);
         await OpenCategoryAsync(category);
         var count = await _library.ScanLocalSourcesAsync(category, GetScanDirectories(category));
-        _dialogService.ShowInfo("扫描完成", $"“{category.Name}”共发现 {count} 个可播放视频文件。\n\n扫描目录：\n{directory}");
+        var resultUnit = string.Equals(category.ItemType, "Series", StringComparison.OrdinalIgnoreCase) ? "部剧集（已归并单集）" : "个可播放视频文件";
+        _dialogService.ShowInfo("扫描完成", $"“{category.Name}”共发现 {count} {resultUnit}。\n\n扫描目录：\n{directory}");
     }
 
     private async Task AutoScanCategoryAsync(MediaCategory category)
@@ -212,7 +217,8 @@ public sealed class MainViewModel : ObservableObject
         var count = await _library.ScanLocalSourcesAsync(category, directories);
         foreach (var source in _settings.LocalMediaSources.Where(x => x.CategoryId == category.Id)) source.LastScanUtc = DateTimeOffset.UtcNow;
         await _settingsService.SaveAsync(_settings);
-        _dialogService.ShowInfo("自动扫描完成", $"“{category.Name}”在 {directories.Count} 个目录中发现 {count} 个可播放视频文件。\n\n同目录海报已自动关联。" );
+        var resultUnit = string.Equals(category.ItemType, "Series", StringComparison.OrdinalIgnoreCase) ? "部剧集（已归并单集）" : "个可播放视频文件";
+        _dialogService.ShowInfo("自动扫描完成", $"“{category.Name}”在 {directories.Count} 个目录中发现 {count} {resultUnit}。\n\n同目录海报已自动关联。" );
     }
 
     private async Task ClearScanDirectoriesAsync(MediaCategory category)
@@ -249,8 +255,18 @@ public sealed class MainViewModel : ObservableObject
             NavigationCategories.Add(category);
     }
 
-    private void ShowDetails(JellyfinMovie movie)
+    private async Task ShowDetailsAsync(JellyfinMovie movie)
     {
+        if (movie.IsSeries)
+        {
+            var seriesDetails = new SeriesDetailsViewModel(movie, _apiClient, _userId, _demoMode, _settings, _pathMappingService, _potPlayerService, _dialogService);
+            seriesDetails.BackRequested += (_, _) => ShowLibrary();
+            seriesDetails.SettingsRequested += (_, _) => ShowSettings();
+            CurrentPage = seriesDetails;
+            PageTitle = "剧集详情";
+            await seriesDetails.LoadAsync();
+            return;
+        }
         var details = new MovieDetailsViewModel(movie, _settings, _pathMappingService, _potPlayerService, _dialogService);
         details.BackRequested += (_, _) => ShowLibrary();
         details.SettingsRequested += (_, _) => ShowSettings();

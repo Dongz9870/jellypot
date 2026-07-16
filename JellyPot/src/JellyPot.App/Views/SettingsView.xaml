@@ -1,8 +1,9 @@
 <UserControl x:Class="JellyPot.App.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:behaviors="clr-namespace:JellyPot.App.Behaviors">
     <Grid>
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" behaviors:SmoothScrollBehavior.IsEnabled="True">
             <StackPanel Margin="34,26,42,40" MaxWidth="1080" HorizontalAlignment="Left">
                 <Button Content="←  返回电影库" Command="{Binding BackCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Padding="0,8" />
                 <TextBlock Text="设置与路径" FontSize="30" FontWeight="Bold" Margin="0,18,0,0" />

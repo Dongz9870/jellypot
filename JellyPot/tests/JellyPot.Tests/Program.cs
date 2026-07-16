@@ -1,6 +1,11 @@
+using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using JellyPot.App.Behaviors;
 using JellyPot.App.Models;
 using JellyPot.App.Services;
 using JellyPot.App.ViewModels;
@@ -24,13 +29,17 @@ internal static class Program
             ("禁用规则不参与匹配", DisabledMappingIgnored),
             ("UNC 路径无需映射可直接播放", DirectUncPath),
             ("扫描视频并关联同目录海报", ScanVideoWithSidecarPoster),
+            ("电视单集自动归并为剧集", ScanTelevisionGroupsEpisodes),
             ("宽银幕分辨率按真实宽高分档", CroppedResolutionClassification),
             ("HDR 与 SDR 动态范围识别", DynamicRangeClassification),
             ("蓝光原盘格式识别", BluRayFormatIdentification),
             ("优先读取媒体版本内的视频流", NestedMediaSourceResolution),
             ("详情页跟随所选播放版本显示分辨率", SelectedSourceResolution),
-            ("电影、电视与详情模板可渲染", MediaViewsRender)
+            ("电影、电视与详情模板可渲染", MediaViewsRender),
+            ("自适应刷新率与动态模糊已启用", SmoothScrollingEnabled)
         };
+
+        tests = [.. tests, ("连接测试后仍可登录", ReconfigureAfterRequest)];
 
         var failed = 0;
         foreach (var test in tests)
@@ -134,6 +143,51 @@ internal static class Program
         }
     }
 
+    private static void ScanTelevisionGroupsEpisodes()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "JellyPotTests", Guid.NewGuid().ToString("N"));
+        var seriesDirectory = Path.Combine(root, "三体");
+        var seasonDirectory = Path.Combine(seriesDirectory, "Season 01");
+        var secondSeasonDirectory = Path.Combine(seriesDirectory, "Season 02");
+        Directory.CreateDirectory(seasonDirectory);
+        Directory.CreateDirectory(secondSeasonDirectory);
+        try
+        {
+            File.WriteAllBytes(Path.Combine(seriesDirectory, "poster.jpg"), [0xFF, 0xD8, 0xFF, 0xD9]);
+            File.WriteAllBytes(Path.Combine(seasonDirectory, "三体.S01E01.科学边界.mkv"), []);
+            File.WriteAllBytes(Path.Combine(seasonDirectory, "三体.S01E02.射手与农场主.mkv"), []);
+            File.WriteAllBytes(Path.Combine(seasonDirectory, "三体.S01E03.宇宙闪烁.mkv"), []);
+            File.WriteAllBytes(Path.Combine(seasonDirectory, "三体-04-古筝行动.mkv"), []);
+            File.WriteAllBytes(Path.Combine(seasonDirectory, "三体 第05集 红岸.mkv"), []);
+            File.WriteAllBytes(Path.Combine(secondSeasonDirectory, "三体.S02E01.面壁者.mkv"), []);
+
+            var items = new LocalMediaScanService().ScanAsync([root], "Series").GetAwaiter().GetResult();
+            if (items.Count != 1) throw new Exception($"预期归并为 1 部剧集，实际 {items.Count}。");
+            var series = items[0];
+            Equal("三体", series.Name);
+            if (!series.IsSeries || series.LocalEpisodes.Count != 6) throw new Exception("剧集没有包含全部本地单集。");
+            Equal("S01E01", series.LocalEpisodes[0].EpisodeNumberText);
+            Equal("科学边界", series.LocalEpisodes[0].Name);
+            Equal("射手与农场主", series.LocalEpisodes[1].Name);
+            Equal("古筝行动", series.LocalEpisodes[3].Name);
+            Equal("红岸", series.LocalEpisodes[4].Name);
+            if (string.IsNullOrWhiteSpace(series.PosterUrl) || !series.PosterUrl.EndsWith("poster.jpg", StringComparison.OrdinalIgnoreCase))
+                throw new Exception("剧集没有关联总海报。");
+
+            using var httpClient = new HttpClient();
+            var details = new SeriesDetailsViewModel(series, new JellyfinApiClient(httpClient), "local", false,
+                new AppSettings(), new PathMappingService(), new PotPlayerService(), new DialogService());
+            details.LoadAsync().GetAwaiter().GetResult();
+            if (details.Seasons.Count != 2 || details.VisibleEpisodes.Count != 5) throw new Exception("剧集详情没有按季显示全部单集。");
+            details.SelectedSeason = details.Seasons[1];
+            if (details.VisibleEpisodes.Count != 1 || details.VisibleEpisodes[0].EpisodeNumberText != "S02E01") throw new Exception("切换季后没有显示对应单集。");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
     private static void CroppedResolutionClassification()
     {
         Equal("4K", VideoResolution.GetLabel(3840, 1608));
@@ -214,15 +268,78 @@ internal static class Program
         };
         var library = new LibraryViewModel(new JellyfinApiClient(httpClient), settings, new SettingsService(), new LocalMediaScanService(), "demo", MediaCategory.Movies(), true);
         library.LoadAsync().GetAwaiter().GetResult();
-        Render(new LibraryView { DataContext = library });
+        var libraryView = new LibraryView { DataContext = library };
+        Render(libraryView);
 
         var movie = library.VisibleMovies.First();
         var details = new MovieDetailsViewModel(movie, settings, new PathMappingService(), new PotPlayerService(), new DialogService());
-        Render(new MovieDetailsView { DataContext = details });
+        var detailsView = new MovieDetailsView { DataContext = details };
+        Render(detailsView);
 
         library.ShowCategoryAsync(MediaCategory.Television()).GetAwaiter().GetResult();
-        if (!library.VisibleMovies.Any(x => x.Type == "Series")) throw new Exception("电视分类没有加载示例剧集。");
+        var series = library.VisibleMovies.FirstOrDefault(x => x.Type == "Series") ?? throw new Exception("电视分类没有加载示例剧集。");
         Render(new LibraryView { DataContext = library });
+        var seriesDetails = new SeriesDetailsViewModel(series, new JellyfinApiClient(httpClient), "demo", true, settings,
+            new PathMappingService(), new PotPlayerService(), new DialogService());
+        seriesDetails.LoadAsync().GetAwaiter().GetResult();
+        if (seriesDetails.VisibleEpisodes.Count == 0) throw new Exception("剧集详情没有加载示例单集。");
+        Render(new SeriesDetailsView { DataContext = seriesDetails });
+    }
+
+    private static void SmoothScrollingEnabled()
+    {
+        if (!SmoothScrollBehavior.FollowsDisplayRefreshRate) throw new Exception("平滑滚动没有跟随屏幕合成刷新率。");
+
+        var libraryView = new LibraryView
+        {
+            DataContext = new
+            {
+                VisibleMovies = Enumerable.Range(1, 60).Select(index => new JellyfinMovie { Name = $"影片 {index}" }).ToList()
+            }
+        };
+        Render(libraryView);
+        var listBox = FindDescendant<ListBox>(libraryView) ?? throw new Exception("没有找到海报墙滚动列表。");
+        if (!SmoothScrollBehavior.GetIsEnabled(listBox)) throw new Exception("海报墙没有启用平滑滚动。");
+        if (!SmoothScrollBehavior.GetEnableMotionBlur(listBox)) throw new Exception("海报墙没有启用动态模糊。");
+        if (ScrollViewer.GetCanContentScroll(listBox)) throw new Exception("海报墙没有使用像素级滚动。");
+        var libraryScrollViewer = FindDescendant<ScrollViewer>(listBox) ?? throw new Exception("没有找到海报墙滚动容器。");
+        libraryScrollViewer.ScrollToVerticalOffset(37.5d);
+        libraryView.UpdateLayout();
+        if (Math.Abs(libraryScrollViewer.VerticalOffset - 37.5d) > 0.6d) throw new Exception("海报墙滚动位置仍然按整行跳动。");
+
+        var detailsView = new MovieDetailsView();
+        Render(detailsView);
+        var detailsScrollViewer = FindDescendant<ScrollViewer>(detailsView) ?? throw new Exception("没有找到详情页滚动容器。");
+        if (!SmoothScrollBehavior.GetIsEnabled(detailsScrollViewer)) throw new Exception("详情页没有启用平滑滚动。");
+
+        var settingsView = new SettingsView();
+        Render(settingsView);
+        var settingsScrollViewer = FindDescendant<ScrollViewer>(settingsView) ?? throw new Exception("没有找到设置页滚动容器。");
+        if (!SmoothScrollBehavior.GetIsEnabled(settingsScrollViewer)) throw new Exception("设置页没有启用平滑滚动。");
+    }
+
+    private static void ReconfigureAfterRequest()
+    {
+        using var httpClient = new HttpClient(new JsonResponseHandler("""
+            {"ServerName":"JellyPot Test","Version":"10.10.0","Id":"server-id"}
+            """));
+        var apiClient = new JellyfinApiClient(httpClient);
+        var settings = new ServerSettings { BaseUrl = "http://localhost:8096" };
+
+        apiClient.Configure(settings);
+        var server = apiClient.GetPublicInfoAsync().GetAwaiter().GetResult();
+        apiClient.Configure(settings);
+
+        Equal("JellyPot Test", server.ServerName);
+    }
+
+    private sealed class JsonResponseHandler(string json) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
     }
 
     private static void Render(FrameworkElement element)
@@ -230,6 +347,17 @@ internal static class Program
         element.Measure(new Size(1200, 760));
         element.Arrange(new Rect(0, 0, 1200, 760));
         element.UpdateLayout();
+    }
+
+    private static T? FindDescendant<T>(DependencyObject parent) where T : DependencyObject
+    {
+        if (parent is T match) return match;
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var result = FindDescendant<T>(VisualTreeHelper.GetChild(parent, index));
+            if (result is not null) return result;
+        }
+        return null;
     }
 
     private static PathResolution Resolve(string path, PathMapping mapping) => new PathMappingService().Resolve(path, [mapping]);

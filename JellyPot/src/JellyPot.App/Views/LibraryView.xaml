@@ -1,6 +1,7 @@
 <UserControl x:Class="JellyPot.App.Views.LibraryView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:behaviors="clr-namespace:JellyPot.App.Behaviors">
     <Grid Margin="30,24,30,20">
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 
@@ -28,7 +29,9 @@
         </Grid>
 
         <Grid Grid.Row="2">
-            <ListBox ItemsSource="{Binding VisibleMovies}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
+            <ListBox ItemsSource="{Binding VisibleMovies}" Background="Transparent" BorderThickness="0"
+                     ScrollViewer.CanContentScroll="False" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     behaviors:SmoothScrollBehavior.IsEnabled="True" behaviors:SmoothScrollBehavior.EnableMotionBlur="True">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate><WrapPanel IsItemsHost="True" Orientation="Horizontal" /></ItemsPanelTemplate>
                 </ListBox.ItemsPanel>
@@ -46,7 +49,7 @@
                         <Button Command="{Binding DataContext.OpenMovieCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}"
                                 Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,18,24" Cursor="Hand" FocusVisualStyle="{x:Null}">
                             <StackPanel Width="174">
-                                <Border Height="260" CornerRadius="10" Background="{StaticResource SurfaceRaisedBrush}" ClipToBounds="True">
+                                <Border Height="260" CornerRadius="10" Background="{StaticResource SurfaceRaisedBrush}" ClipToBounds="True" CacheMode="BitmapCache">
                                     <Grid>
                                         <Border>
                                             <Border.Background>
@@ -57,7 +60,8 @@
                                             <TextBlock Text="{Binding Initial}" Foreground="#3A4150" FontSize="72" FontWeight="Black" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <Image Source="{Binding PosterUrl}" Stretch="UniformToFill" />
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="9">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="9"
+                                                    Visibility="{Binding IsSeries, Converter={StaticResource InverseBoolToVisibility}}">
                                             <Border Background="#D90B0D12" CornerRadius="5" Padding="7,3" ToolTip="{Binding ResolutionDetailText}">
                                                 <TextBlock Text="{Binding ResolutionText}" FontSize="10" FontWeight="Bold" />
                                             </Border>

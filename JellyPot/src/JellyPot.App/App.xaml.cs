@@ -19,7 +19,10 @@ public partial class App : Application
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
             PooledConnectionLifetime = TimeSpan.FromMinutes(10)
-        });
+        })
+        {
+            Timeout = TimeSpan.FromSeconds(20)
+        };
         var viewModel = new MainViewModel(
             new JellyfinApiClient(_httpClient),
             new SettingsService(),
