@@ -49,6 +49,8 @@ public sealed class JellyfinMovie
     public double? CommunityRating { get; set; }
     public long? RunTimeTicks { get; set; }
     public string? Path { get; set; }
+    public string? VideoType { get; set; }
+    public string? IsoType { get; set; }
     public List<string> Genres { get; set; } = [];
     public Dictionary<string, string> ImageTags { get; set; } = [];
     public List<MediaSourceInfo> MediaSources { get; set; } = [];
@@ -71,6 +73,11 @@ public sealed class JellyfinMovie
         .FirstOrDefault();
     [JsonIgnore] public string ResolutionText => VideoResolution.GetLabel(BestVideoStream);
     [JsonIgnore] public string ResolutionDetailText => VideoResolution.GetDescription(BestVideoStream);
+    [JsonIgnore] public string DynamicRangeText => VideoDynamicRange.GetLabel(BestVideoStream);
+    [JsonIgnore] public string DynamicRangeDetailText => VideoDynamicRange.GetDescription(BestVideoStream);
+    [JsonIgnore] public bool HasDynamicRange => VideoDynamicRange.IsKnown(BestVideoStream);
+    [JsonIgnore] public bool HasBluRay => VideoMediaFormat.IsBluRay(this);
+    [JsonIgnore] public string BluRayDetailText => VideoMediaFormat.GetBluRayDescription(this);
 }
 
 public sealed class JellyfinUserData
@@ -86,6 +93,8 @@ public sealed class MediaSourceInfo
     public string? Name { get; set; }
     public string? Path { get; set; }
     public string? Container { get; set; }
+    public string? VideoType { get; set; }
+    public string? IsoType { get; set; }
     public long? Size { get; set; }
     public List<MediaStreamInfo> MediaStreams { get; set; } = [];
     [JsonIgnore] public string DisplayName => string.IsNullOrWhiteSpace(Name) ? (Container?.ToUpperInvariant() ?? "默认版本") : Name;
@@ -100,7 +109,9 @@ public sealed class MediaStreamInfo
     public int? Width { get; set; }
     public int? Height { get; set; }
     public int? Channels { get; set; }
+    public string? VideoRange { get; set; }
     public string? VideoRangeType { get; set; }
+    public string? ColorTransfer { get; set; }
 }
 
 public static class VideoResolution
@@ -166,6 +177,87 @@ public static class VideoResolution
         >= 1200 => "720P",
         _ => "未知"
     };
+}
+
+public static class VideoDynamicRange
+{
+    public static bool IsKnown(MediaStreamInfo? stream) => GetLabel(stream) != "未知";
+
+    public static string GetLabel(MediaStreamInfo? stream)
+    {
+        if (stream is null) return "未知";
+        foreach (var value in new[] { stream.VideoRangeType, stream.VideoRange, stream.ColorTransfer, stream.DisplayTitle })
+        {
+            if (string.IsNullOrWhiteSpace(value)) continue;
+            var normalized = value.Replace("-", string.Empty).Replace("_", string.Empty).Replace(" ", string.Empty).ToUpperInvariant();
+            if (normalized.Contains("DOVI") || normalized.Contains("DOLBYVISION") || normalized.Contains("HDR")
+                || normalized.Contains("HLG") || normalized.Contains("SMPTE2084") || normalized == "PQ") return "HDR";
+            if (normalized.Contains("SDR") || normalized.Contains("BT709") || normalized.Contains("SMPTE170M")
+                || normalized.Contains("BT470") || normalized.Contains("GAMMA") || normalized.Contains("IEC61966")) return "SDR";
+        }
+        return "未知";
+    }
+
+    public static string GetDescription(MediaStreamInfo? stream)
+    {
+        var label = GetLabel(stream);
+        if (label == "未知" || stream is null) return label;
+        var type = stream.VideoRangeType?.Trim();
+        return label == "HDR" && !string.IsNullOrWhiteSpace(type) && !type.Equals("HDR", StringComparison.OrdinalIgnoreCase)
+            ? $"HDR · {type.ToUpperInvariant()}"
+            : label;
+    }
+}
+
+public static class VideoMediaFormat
+{
+    public static bool IsBluRay(JellyfinMovie item) =>
+        IsBluRay(item.VideoType, item.IsoType, null, item.Path) || item.MediaSources.Any(IsBluRay);
+
+    public static bool IsBluRay(MediaSourceInfo source) =>
+        IsBluRay(source.VideoType, source.IsoType, source.Container, source.Path);
+
+    public static bool IsBluRay(string? videoType, string? isoType, string? container, string? path)
+    {
+        if (IsBluRayValue(videoType) || IsBluRayValue(isoType) || IsBluRayValue(container)) return true;
+        return HasBdmvPath(path);
+    }
+
+    public static string GetBluRayDescription(JellyfinMovie item)
+    {
+        var source = item.MediaSources.FirstOrDefault(IsBluRay);
+        return source is null
+            ? GetBluRayDescription(item.VideoType, item.IsoType, null, item.Path)
+            : GetBluRayDescription(source);
+    }
+
+    public static string GetBluRayDescription(MediaSourceInfo source) =>
+        GetBluRayDescription(source.VideoType, source.IsoType, source.Container, source.Path);
+
+    private static string GetBluRayDescription(string? videoType, string? isoType, string? container, string? path)
+    {
+        if (!IsBluRay(videoType, isoType, container, path)) return "";
+        if (IsBluRayValue(isoType) || string.Equals(container, "iso", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Path.GetExtension(path), ".iso", StringComparison.OrdinalIgnoreCase)) return "蓝光原盘 · ISO";
+        if (HasBdmvPath(path)) return "蓝光原盘 · BDMV";
+        return "蓝光原盘";
+    }
+
+    private static bool HasBdmvPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var normalized = path.Replace('\\', '/').TrimEnd('/');
+        return normalized.EndsWith("/BDMV", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("/BDMV/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsBluRayValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        var normalized = value.Replace("-", string.Empty).Replace("_", string.Empty).Replace(" ", string.Empty);
+        return normalized.Equals("BluRay", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("BDMV", StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 public sealed record MoviePage(IReadOnlyList<JellyfinMovie> Items, int TotalCount, int StartIndex);

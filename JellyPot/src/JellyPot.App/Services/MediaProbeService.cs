@@ -55,18 +55,22 @@ public sealed class MediaProbeService
                 var height = ReadInt(stream, "height");
                 if (width is null && height is null) continue;
                 var transfer = ReadString(stream, "color_transfer");
+                var rangeType = transfer?.ToLowerInvariant() switch
+                {
+                    "smpte2084" => "HDR10",
+                    "arib-std-b67" => "HLG",
+                    "bt709" or "smpte170m" or "bt470bg" or "gamma22" or "gamma28" or "iec61966-2-1" => "SDR",
+                    _ => null
+                };
                 return new MediaStreamInfo
                 {
                     Type = "Video",
                     Width = width,
                     Height = height,
                     Codec = ReadString(stream, "codec_name"),
-                    VideoRangeType = transfer?.ToLowerInvariant() switch
-                    {
-                        "smpte2084" => "HDR10",
-                        "arib-std-b67" => "HLG",
-                        _ => null
-                    }
+                    ColorTransfer = transfer,
+                    VideoRange = rangeType is "HDR10" or "HLG" ? "HDR" : rangeType,
+                    VideoRangeType = rangeType
                 };
             }
         }

@@ -50,6 +50,16 @@ public sealed class MovieDetailsViewModel : ObservableObject
     public string GenresText => Movie.Genres.Count > 0 ? string.Join("  ·  ", Movie.Genres) : "类型未知";
     public string SelectedResolutionText => VideoResolution.GetLabel(SelectedVideoStream);
     public string SelectedResolutionDetailText => VideoResolution.GetDescription(SelectedVideoStream);
+    public string SelectedDynamicRangeText => VideoDynamicRange.GetLabel(SelectedVideoStream);
+    public string SelectedDynamicRangeDetailText => VideoDynamicRange.GetDescription(SelectedVideoStream);
+    public bool SelectedHasDynamicRange => VideoDynamicRange.IsKnown(SelectedVideoStream);
+    public bool SelectedHasBluRay => SelectedSource is null
+        ? Movie.HasBluRay
+        : VideoMediaFormat.IsBluRay(SelectedSource)
+            || (Movie.MediaSources.Count <= 1 && VideoMediaFormat.IsBluRay(Movie.VideoType, Movie.IsoType, null, Movie.Path));
+    public string SelectedBluRayDetailText => SelectedSource is not null && VideoMediaFormat.IsBluRay(SelectedSource)
+        ? VideoMediaFormat.GetBluRayDescription(SelectedSource)
+        : Movie.BluRayDetailText;
     public string VideoInfo
     {
         get
@@ -57,7 +67,8 @@ public sealed class MovieDetailsViewModel : ObservableObject
             var video = SelectedVideoStream;
             var parts = new List<string> { VideoResolution.GetDescription(video) };
             if (!string.IsNullOrWhiteSpace(video?.Codec)) parts.Add(video.Codec.ToUpperInvariant());
-            if (!string.IsNullOrWhiteSpace(video?.VideoRangeType)) parts.Add(video.VideoRangeType);
+            if (VideoDynamicRange.IsKnown(video)) parts.Add(VideoDynamicRange.GetDescription(video));
+            if (SelectedHasBluRay) parts.Add("蓝光原盘");
             return string.Join("  ·  ", parts);
         }
     }
@@ -80,6 +91,11 @@ public sealed class MovieDetailsViewModel : ObservableObject
         OnPropertyChanged(nameof(VideoInfo));
         OnPropertyChanged(nameof(SelectedResolutionText));
         OnPropertyChanged(nameof(SelectedResolutionDetailText));
+        OnPropertyChanged(nameof(SelectedDynamicRangeText));
+        OnPropertyChanged(nameof(SelectedDynamicRangeDetailText));
+        OnPropertyChanged(nameof(SelectedHasDynamicRange));
+        OnPropertyChanged(nameof(SelectedHasBluRay));
+        OnPropertyChanged(nameof(SelectedBluRayDetailText));
         try
         {
             var result = _pathMappingService.Resolve(ServerPath, _settings.PathMappings);

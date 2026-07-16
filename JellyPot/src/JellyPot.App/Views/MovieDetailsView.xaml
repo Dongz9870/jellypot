@@ -30,6 +30,22 @@
                 <StackPanel Grid.Column="2" VerticalAlignment="Top">
                     <StackPanel Orientation="Horizontal">
                         <Border Background="{StaticResource AccentBrush}" CornerRadius="5" Padding="8,4" ToolTip="{Binding SelectedResolutionDetailText}"><TextBlock Text="{Binding SelectedResolutionText}" FontSize="10" FontWeight="Bold" /></Border>
+                        <Border CornerRadius="5" Padding="8,4" Margin="7,0,0,0" ToolTip="{Binding SelectedDynamicRangeDetailText}"
+                                Visibility="{Binding SelectedHasDynamicRange, Converter={StaticResource BoolToVisibility}}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#3A414F" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedDynamicRangeText}" Value="HDR"><Setter Property="Background" Value="#823B64" /></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding SelectedDynamicRangeText}" FontSize="10" FontWeight="Bold" />
+                        </Border>
+                        <Border Background="#295D8F" CornerRadius="5" Padding="8,4" Margin="7,0,0,0" ToolTip="{Binding SelectedBluRayDetailText}"
+                                Visibility="{Binding SelectedHasBluRay, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="蓝光" Foreground="#D9ECFF" FontSize="10" FontWeight="Bold" />
+                        </Border>
                         <Border Background="{StaticResource SurfaceRaisedBrush}" CornerRadius="5" Padding="8,4" Margin="7,0,0,0"><TextBlock Text="{Binding Movie.ProgressText}" FontSize="10" /></Border>
                         <Border Background="{StaticResource SurfaceRaisedBrush}" CornerRadius="5" Padding="8,4" Margin="7,0,0,0"><TextBlock Text="原文件直读" Foreground="{StaticResource SuccessBrush}" FontSize="10" /></Border>
                     </StackPanel>

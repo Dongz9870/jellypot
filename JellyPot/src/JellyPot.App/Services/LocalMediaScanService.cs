@@ -64,7 +64,12 @@ public sealed class LocalMediaScanService
         var extension = Path.GetExtension(videoPath).TrimStart('.').ToUpperInvariant();
         var videoStream = _mediaProbeService.ProbeVideo(videoPath);
         var resolution = VideoResolution.GetLabel(videoStream);
-        var sourceName = resolution == "未知" ? $"本地 · {extension}" : $"本地 · {resolution} · {extension}";
+        var isBluRay = VideoMediaFormat.IsBluRay(null, null, null, videoPath);
+        var sourceParts = new List<string> { "本地" };
+        if (isBluRay) sourceParts.Add("蓝光");
+        if (resolution != "未知") sourceParts.Add(resolution);
+        sourceParts.Add(extension);
+        var sourceName = string.Join(" · ", sourceParts);
         var streams = videoStream is null ? new List<MediaStreamInfo>() : [videoStream];
 
         return new JellyfinMovie
@@ -75,9 +80,10 @@ public sealed class LocalMediaScanService
             ProductionYear = yearMatch.Success ? int.Parse(yearMatch.Value) : null,
             Overview = "由 JellyPot 从本地或 NAS 扫描目录发现。",
             Path = videoPath,
+            VideoType = isBluRay ? "BluRay" : "VideoFile",
             PosterUrl = poster,
             IsLocal = true,
-            MediaSources = [new MediaSourceInfo { Id = StableId(videoPath), Name = sourceName, Path = videoPath, Container = extension.ToLowerInvariant(), MediaStreams = streams }],
+            MediaSources = [new MediaSourceInfo { Id = StableId(videoPath), Name = sourceName, Path = videoPath, Container = extension.ToLowerInvariant(), VideoType = isBluRay ? "BluRay" : "VideoFile", MediaStreams = streams }],
             MediaStreams = streams,
             UserData = new JellyfinUserData()
         };

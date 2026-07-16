@@ -25,6 +25,8 @@ internal static class Program
             ("UNC 路径无需映射可直接播放", DirectUncPath),
             ("扫描视频并关联同目录海报", ScanVideoWithSidecarPoster),
             ("宽银幕分辨率按真实宽高分档", CroppedResolutionClassification),
+            ("HDR 与 SDR 动态范围识别", DynamicRangeClassification),
+            ("蓝光原盘格式识别", BluRayFormatIdentification),
             ("优先读取媒体版本内的视频流", NestedMediaSourceResolution),
             ("详情页跟随所选播放版本显示分辨率", SelectedSourceResolution),
             ("电影、电视与详情模板可渲染", MediaViewsRender)
@@ -140,6 +142,25 @@ internal static class Program
         Equal("未知", VideoResolution.GetLabel(null, null));
     }
 
+    private static void DynamicRangeClassification()
+    {
+        Equal("HDR", VideoDynamicRange.GetLabel(new MediaStreamInfo { Type = "Video", VideoRangeType = "HDR10" }));
+        Equal("HDR", VideoDynamicRange.GetLabel(new MediaStreamInfo { Type = "Video", VideoRangeType = "DOVIWithHDR10" }));
+        Equal("HDR", VideoDynamicRange.GetLabel(new MediaStreamInfo { Type = "Video", VideoRange = "HDR", ColorTransfer = "smpte2084" }));
+        Equal("SDR", VideoDynamicRange.GetLabel(new MediaStreamInfo { Type = "Video", VideoRangeType = "SDR" }));
+        Equal("SDR", VideoDynamicRange.GetLabel(new MediaStreamInfo { Type = "Video", ColorTransfer = "bt709" }));
+        Equal("未知", VideoDynamicRange.GetLabel(new MediaStreamInfo { Type = "Video" }));
+    }
+
+    private static void BluRayFormatIdentification()
+    {
+        if (!VideoMediaFormat.IsBluRay(new MediaSourceInfo { VideoType = "BluRay" })) throw new Exception("Jellyfin BluRay 类型应显示蓝光角标。");
+        if (!VideoMediaFormat.IsBluRay(new MediaSourceInfo { VideoType = "Iso", IsoType = "BluRay", Path = @"D:\Movies\disc.iso" })) throw new Exception("蓝光 ISO 应显示蓝光角标。");
+        if (!VideoMediaFormat.IsBluRay(new MediaSourceInfo { Path = @"D:\Movies\Film\BDMV\STREAM\00001.m2ts" })) throw new Exception("BDMV 目录应显示蓝光角标。");
+        if (VideoMediaFormat.IsBluRay(new MediaSourceInfo { VideoType = "Iso", Path = @"D:\Movies\disc.iso" })) throw new Exception("类型未知的 ISO 不应误标为蓝光。");
+        if (VideoMediaFormat.IsBluRay(new MediaSourceInfo { Path = @"D:\Movies\Film.BluRay.1080p.mkv" })) throw new Exception("不能仅凭文件名中的 BluRay 字样判断蓝光原盘。");
+    }
+
     private static void NestedMediaSourceResolution()
     {
         var movie = new JellyfinMovie
@@ -164,15 +185,19 @@ internal static class Program
             Path = @"D:\Movies\movie.mkv",
             MediaSources =
             [
-                new MediaSourceInfo { Name = "4K", Path = @"D:\Movies\movie-4k.mkv", MediaStreams = [new MediaStreamInfo { Type = "Video", Width = 3840, Height = 1608 }] },
-                new MediaSourceInfo { Name = "1080P", Path = @"D:\Movies\movie-1080p.mkv", MediaStreams = [new MediaStreamInfo { Type = "Video", Width = 1920, Height = 800 }] }
+                new MediaSourceInfo { Name = "4K 蓝光", Path = @"D:\Movies\movie-4k.iso", VideoType = "Iso", IsoType = "BluRay", MediaStreams = [new MediaStreamInfo { Type = "Video", Width = 3840, Height = 1608, VideoRangeType = "HDR10" }] },
+                new MediaSourceInfo { Name = "1080P", Path = @"D:\Movies\movie-1080p.mkv", VideoType = "VideoFile", MediaStreams = [new MediaStreamInfo { Type = "Video", Width = 1920, Height = 800, VideoRangeType = "SDR" }] }
             ]
         };
         var details = new MovieDetailsViewModel(movie, new AppSettings(), new PathMappingService(), new PotPlayerService(), new DialogService());
         Equal("4K", details.SelectedResolutionText);
+        Equal("HDR", details.SelectedDynamicRangeText);
+        if (!details.SelectedHasBluRay) throw new Exception("所选蓝光版本应显示蓝光角标。");
         details.SelectedSource = movie.MediaSources[1];
         Equal("1080P", details.SelectedResolutionText);
         Equal("1080P · 1920×800", details.SelectedResolutionDetailText);
+        Equal("SDR", details.SelectedDynamicRangeText);
+        if (details.SelectedHasBluRay) throw new Exception("切换到普通视频版本后应隐藏蓝光角标。");
     }
 
     private static void MediaViewsRender()
