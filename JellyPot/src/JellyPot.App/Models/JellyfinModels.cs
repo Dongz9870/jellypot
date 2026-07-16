@@ -63,14 +63,14 @@ public sealed class JellyfinMovie
     [JsonIgnore] public string Initial => string.IsNullOrWhiteSpace(Name) ? "J" : Name.Trim()[0].ToString().ToUpperInvariant();
     [JsonIgnore] public string ProgressText => UserData.Played ? "已观看" : UserData.PlaybackPositionTicks > 0 ? $"已看 {ProgressPercent:0}%" : "未观看";
     [JsonIgnore] public double ProgressPercent => RunTimeTicks is > 0 ? Math.Clamp(UserData.PlaybackPositionTicks * 100d / RunTimeTicks.Value, 0, 100) : 0;
-    [JsonIgnore] public string ResolutionText
-    {
-        get
-        {
-            var video = MediaStreams.FirstOrDefault(x => string.Equals(x.Type, "Video", StringComparison.OrdinalIgnoreCase));
-            return video?.Height switch { >= 2100 => "4K", >= 1000 => "1080P", >= 700 => "720P", > 0 => $"{video.Height}P", _ => "HD" };
-        }
-    }
+    [JsonIgnore] public MediaStreamInfo? BestVideoStream => MediaSources
+        .SelectMany(source => source.MediaStreams)
+        .Concat(MediaStreams)
+        .Where(VideoResolution.IsVideo)
+        .OrderByDescending(VideoResolution.PixelCount)
+        .FirstOrDefault();
+    [JsonIgnore] public string ResolutionText => VideoResolution.GetLabel(BestVideoStream);
+    [JsonIgnore] public string ResolutionDetailText => VideoResolution.GetDescription(BestVideoStream);
 }
 
 public sealed class JellyfinUserData
@@ -101,6 +101,71 @@ public sealed class MediaStreamInfo
     public int? Height { get; set; }
     public int? Channels { get; set; }
     public string? VideoRangeType { get; set; }
+}
+
+public static class VideoResolution
+{
+    public static bool IsVideo(MediaStreamInfo stream) =>
+        string.Equals(stream.Type, "Video", StringComparison.OrdinalIgnoreCase);
+
+    public static long PixelCount(MediaStreamInfo stream) =>
+        Math.Max(0, stream.Width ?? 0) * (long)Math.Max(0, stream.Height ?? 0);
+
+    public static string GetLabel(MediaStreamInfo? stream) =>
+        stream is null ? "未知" : GetLabel(stream.Width, stream.Height);
+
+    public static string GetLabel(int? width, int? height)
+    {
+        var validWidth = width is > 0 ? width.Value : 0;
+        var validHeight = height is > 0 ? height.Value : 0;
+        if (validWidth == 0 && validHeight == 0) return "未知";
+
+        if (validWidth == 0) return LabelFromHeight(validHeight);
+        if (validHeight == 0) return LabelFromWidth(validWidth);
+
+        var longSide = Math.Max(validWidth, validHeight);
+        var shortSide = Math.Min(validWidth, validHeight);
+
+        // Width is considered as well as height so cropped scope formats such as
+        // 3840x1608 and 1920x800 keep their source resolution class.
+        if (longSide >= 7000 || shortSide >= 4000) return "8K";
+        if (longSide >= 3800 || shortSide >= 2000) return "4K";
+        if (longSide >= 2500 && shortSide >= 1200) return "1440P";
+        if (longSide >= 1900 || shortSide >= 1000) return "1080P";
+        if (longSide >= 1200 || shortSide >= 700) return "720P";
+        return $"{shortSide}P";
+    }
+
+    public static string GetDimensions(MediaStreamInfo? stream) =>
+        stream?.Width is > 0 && stream.Height is > 0 ? $"{stream.Width}×{stream.Height}" : "尺寸未知";
+
+    public static string GetDescription(MediaStreamInfo? stream)
+    {
+        var label = GetLabel(stream);
+        var dimensions = GetDimensions(stream);
+        return dimensions == "尺寸未知" ? label : $"{label} · {dimensions}";
+    }
+
+    private static string LabelFromHeight(int height) => height switch
+    {
+        >= 4000 => "8K",
+        >= 2000 => "4K",
+        >= 1300 => "1440P",
+        >= 1000 => "1080P",
+        >= 700 => "720P",
+        > 0 => $"{height}P",
+        _ => "未知"
+    };
+
+    private static string LabelFromWidth(int width) => width switch
+    {
+        >= 7000 => "8K",
+        >= 3800 => "4K",
+        >= 2500 => "1440P",
+        >= 1900 => "1080P",
+        >= 1200 => "720P",
+        _ => "未知"
+    };
 }
 
 public sealed record MoviePage(IReadOnlyList<JellyfinMovie> Items, int TotalCount, int StartIndex);

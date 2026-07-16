@@ -57,7 +57,8 @@
                                             <TextBlock Text="{Binding Initial}" Foreground="#3A4150" FontSize="72" FontWeight="Black" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <Image Source="{Binding PosterUrl}" Stretch="UniformToFill" />
-                                        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Background="#D90B0D12" CornerRadius="5" Padding="7,3" Margin="9">
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Background="#D90B0D12" CornerRadius="5" Padding="7,3" Margin="9"
+                                                ToolTip="{Binding ResolutionDetailText}">
                                             <TextBlock Text="{Binding ResolutionText}" FontSize="10" FontWeight="Bold" />
                                         </Border>
                                         <Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="#D90B0D12" CornerRadius="13" Width="26" Height="26" Margin="9"

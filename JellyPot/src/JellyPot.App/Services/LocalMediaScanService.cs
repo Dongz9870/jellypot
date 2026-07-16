@@ -7,6 +7,7 @@ namespace JellyPot.App.Services;
 
 public sealed class LocalMediaScanService
 {
+    private readonly MediaProbeService _mediaProbeService;
     private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".mkv", ".mp4", ".m2ts", ".ts", ".avi", ".iso", ".wmv", ".mov"
@@ -14,10 +15,15 @@ public sealed class LocalMediaScanService
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp"];
     private static readonly string[] PosterNames = ["poster", "folder", "cover", "movie", "fanart"];
 
+    public LocalMediaScanService(MediaProbeService? mediaProbeService = null)
+    {
+        _mediaProbeService = mediaProbeService ?? new MediaProbeService();
+    }
+
     public Task<IReadOnlyList<JellyfinMovie>> ScanAsync(IEnumerable<string> directories, string itemType, CancellationToken cancellationToken = default) =>
         Task.Run<IReadOnlyList<JellyfinMovie>>(() => Scan(directories, itemType, cancellationToken), cancellationToken);
 
-    private static IReadOnlyList<JellyfinMovie> Scan(IEnumerable<string> directories, string itemType, CancellationToken cancellationToken)
+    private IReadOnlyList<JellyfinMovie> Scan(IEnumerable<string> directories, string itemType, CancellationToken cancellationToken)
     {
         var results = new List<JellyfinMovie>();
         var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -46,7 +52,7 @@ public sealed class LocalMediaScanService
         return results.OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
-    private static JellyfinMovie CreateItem(string videoPath, string itemType)
+    private JellyfinMovie CreateItem(string videoPath, string itemType)
     {
         var fileName = Path.GetFileNameWithoutExtension(videoPath);
         var parentName = Directory.GetParent(videoPath)?.Name;
@@ -56,6 +62,10 @@ public sealed class LocalMediaScanService
         var yearMatch = Regex.Match(displayName, @"(?<!\d)(19|20)\d{2}(?!\d)");
         var poster = FindPoster(videoPath);
         var extension = Path.GetExtension(videoPath).TrimStart('.').ToUpperInvariant();
+        var videoStream = _mediaProbeService.ProbeVideo(videoPath);
+        var resolution = VideoResolution.GetLabel(videoStream);
+        var sourceName = resolution == "未知" ? $"本地 · {extension}" : $"本地 · {resolution} · {extension}";
+        var streams = videoStream is null ? new List<MediaStreamInfo>() : [videoStream];
 
         return new JellyfinMovie
         {
@@ -67,7 +77,8 @@ public sealed class LocalMediaScanService
             Path = videoPath,
             PosterUrl = poster,
             IsLocal = true,
-            MediaSources = [new MediaSourceInfo { Id = StableId(videoPath), Name = $"本地 · {extension}", Path = videoPath, Container = extension.ToLowerInvariant() }],
+            MediaSources = [new MediaSourceInfo { Id = StableId(videoPath), Name = sourceName, Path = videoPath, Container = extension.ToLowerInvariant(), MediaStreams = streams }],
+            MediaStreams = streams,
             UserData = new JellyfinUserData()
         };
     }

@@ -24,6 +24,9 @@ internal static class Program
             ("禁用规则不参与匹配", DisabledMappingIgnored),
             ("UNC 路径无需映射可直接播放", DirectUncPath),
             ("扫描视频并关联同目录海报", ScanVideoWithSidecarPoster),
+            ("宽银幕分辨率按真实宽高分档", CroppedResolutionClassification),
+            ("优先读取媒体版本内的视频流", NestedMediaSourceResolution),
+            ("详情页跟随所选播放版本显示分辨率", SelectedSourceResolution),
             ("电影、电视与详情模板可渲染", MediaViewsRender)
         };
 
@@ -127,6 +130,49 @@ internal static class Program
         {
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
+    }
+
+    private static void CroppedResolutionClassification()
+    {
+        Equal("4K", VideoResolution.GetLabel(3840, 1608));
+        Equal("1080P", VideoResolution.GetLabel(1920, 800));
+        Equal("720P", VideoResolution.GetLabel(1280, 536));
+        Equal("未知", VideoResolution.GetLabel(null, null));
+    }
+
+    private static void NestedMediaSourceResolution()
+    {
+        var movie = new JellyfinMovie
+        {
+            MediaStreams = [new MediaStreamInfo { Type = "Video", Width = 1280, Height = 720 }],
+            MediaSources =
+            [
+                new MediaSourceInfo
+                {
+                    MediaStreams = [new MediaStreamInfo { Type = "Video", Width = 3840, Height = 1608 }]
+                }
+            ]
+        };
+        Equal("4K", movie.ResolutionText);
+        Equal("4K · 3840×1608", movie.ResolutionDetailText);
+    }
+
+    private static void SelectedSourceResolution()
+    {
+        var movie = new JellyfinMovie
+        {
+            Path = @"D:\Movies\movie.mkv",
+            MediaSources =
+            [
+                new MediaSourceInfo { Name = "4K", Path = @"D:\Movies\movie-4k.mkv", MediaStreams = [new MediaStreamInfo { Type = "Video", Width = 3840, Height = 1608 }] },
+                new MediaSourceInfo { Name = "1080P", Path = @"D:\Movies\movie-1080p.mkv", MediaStreams = [new MediaStreamInfo { Type = "Video", Width = 1920, Height = 800 }] }
+            ]
+        };
+        var details = new MovieDetailsViewModel(movie, new AppSettings(), new PathMappingService(), new PotPlayerService(), new DialogService());
+        Equal("4K", details.SelectedResolutionText);
+        details.SelectedSource = movie.MediaSources[1];
+        Equal("1080P", details.SelectedResolutionText);
+        Equal("1080P · 1920×800", details.SelectedResolutionDetailText);
     }
 
     private static void MediaViewsRender()

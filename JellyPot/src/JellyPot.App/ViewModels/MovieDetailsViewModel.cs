@@ -48,12 +48,29 @@ public sealed class MovieDetailsViewModel : ObservableObject
     public string PathStatus { get => _pathStatus; private set => SetProperty(ref _pathStatus, value); }
     public bool CanPlay { get => _canPlay; private set { if (SetProperty(ref _canPlay, value)) PlayCommand.NotifyCanExecuteChanged(); } }
     public string GenresText => Movie.Genres.Count > 0 ? string.Join("  ·  ", Movie.Genres) : "类型未知";
+    public string SelectedResolutionText => VideoResolution.GetLabel(SelectedVideoStream);
+    public string SelectedResolutionDetailText => VideoResolution.GetDescription(SelectedVideoStream);
     public string VideoInfo
     {
         get
         {
-            var video = (SelectedSource?.MediaStreams.Count > 0 ? SelectedSource.MediaStreams : Movie.MediaStreams).FirstOrDefault(x => x.Type == "Video");
-            return video is null ? Movie.ResolutionText : $"{Movie.ResolutionText}  ·  {video.Codec?.ToUpperInvariant() ?? "视频"}  ·  {video.VideoRangeType ?? "SDR"}";
+            var video = SelectedVideoStream;
+            var parts = new List<string> { VideoResolution.GetDescription(video) };
+            if (!string.IsNullOrWhiteSpace(video?.Codec)) parts.Add(video.Codec.ToUpperInvariant());
+            if (!string.IsNullOrWhiteSpace(video?.VideoRangeType)) parts.Add(video.VideoRangeType);
+            return string.Join("  ·  ", parts);
+        }
+    }
+
+    private MediaStreamInfo? SelectedVideoStream
+    {
+        get
+        {
+            var selected = SelectedSource?.MediaStreams.Where(VideoResolution.IsVideo)
+                .OrderByDescending(VideoResolution.PixelCount).FirstOrDefault();
+            return selected is not null && VideoResolution.PixelCount(selected) > 0
+                ? selected
+                : Movie.BestVideoStream ?? selected;
         }
     }
 
@@ -61,6 +78,8 @@ public sealed class MovieDetailsViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(ServerPath));
         OnPropertyChanged(nameof(VideoInfo));
+        OnPropertyChanged(nameof(SelectedResolutionText));
+        OnPropertyChanged(nameof(SelectedResolutionDetailText));
         try
         {
             var result = _pathMappingService.Resolve(ServerPath, _settings.PathMappings);
