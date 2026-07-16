@@ -5,6 +5,15 @@
              xmlns:views="clr-namespace:JellyPot.App.Views"
              xmlns:converters="clr-namespace:JellyPot.App.Converters">
     <Application.Resources>
+        <DrawingImage x:Key="AppIcon">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#FF4D8D" Geometry="M6,2 H26 A4,4 0 0 1 30,6 V26 A4,4 0 0 1 26,30 H6 A4,4 0 0 1 2,26 V6 A4,4 0 0 1 6,2 Z" />
+                    <GeometryDrawing Brush="#FFF8FB" Geometry="M20,7 H25 V19.8 C25,25.3 21.7,28 16.5,28 C11.4,28 8,25.2 8,20.5 H13 C13,22.7 14.3,23.8 16.5,23.8 C18.8,23.8 20,22.4 20,19.8 Z" />
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
         <Color x:Key="BackgroundColor">#0B0D12</Color>
         <Color x:Key="SurfaceColor">#141821</Color>
         <Color x:Key="SurfaceRaisedColor">#1A1F2A</Color>
@@ -33,6 +42,7 @@
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
 
         <Style TargetType="Window">
+            <Setter Property="Icon" Value="{StaticResource AppIcon}" />
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="{StaticResource BackgroundBrush}" />

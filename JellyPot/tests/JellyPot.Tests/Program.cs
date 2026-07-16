@@ -204,6 +204,9 @@ internal static class Program
     {
         var application = new JellyPot.App.App();
         application.InitializeComponent();
+        if (application.FindResource("AppIcon") is not System.Windows.Media.ImageSource) throw new Exception("应用图标资源没有加载。");
+        var iconWindow = new AddCategoryWindow([]);
+        if (iconWindow.Icon is null) throw new Exception("窗口没有应用任务栏图标。");
         using var httpClient = new HttpClient();
         var settings = new AppSettings
         {

@@ -1,7 +1,7 @@
 <Window x:Class="JellyPot.App.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="JellyPot" Width="1440" Height="900" MinWidth="1080" MinHeight="700"
+        Title="JellyPot" Icon="{StaticResource AppIcon}" Width="1440" Height="900" MinWidth="1080" MinHeight="700"
         WindowStartupLocation="CenterScreen" Background="{StaticResource BackgroundBrush}">
     <Grid>
         <ContentControl Content="{Binding CurrentPage}"
