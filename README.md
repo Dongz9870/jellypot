@@ -14,11 +14,11 @@ JellyPot 是一个面向 Windows 11 的本地媒体客户端。它读取 Jellyfi
 
 ### 海报墙与媒体信息标志
 
-![JellyPot 电影海报墙](JellyPot_GitHub_README/docs/images/jellypot-library.png)
+![JellyPot 电影海报墙](JellyPot/docs/images/jellypot-library.png)
 
 ### 影片详情与 PotPlayer 本地播放
 
-![JellyPot 影片详情页](JellyPot_GitHub_README/docs/images/jellypot-details.png)
+![JellyPot 影片详情页](JellyPot/docs/images/jellypot-details.png)
 
 ## 已实现功能
 
