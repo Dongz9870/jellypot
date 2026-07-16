@@ -1,0 +1,14 @@
+{
+  "folders": [
+    {
+      "path": "./JellyPot"
+    }
+  ],
+  "settings": {
+    "dotnet.defaultSolution": "JellyPot/JellyPot.sln",
+    "files.exclude": {
+      "**/bin": true,
+      "**/obj": true
+    }
+  }
+}

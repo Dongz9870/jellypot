@@ -1,0 +1,22 @@
+# IDE and local agent state
+.vs/
+.vscode/
+.idea/
+.agents/
+.codex/
+*.user
+*.suo
+
+# .NET build output
+**/bin/
+**/obj/
+TestResults/
+artifacts/
+
+# Runtime-local data and logs
+settings.json
+*.log
+*.tmp
+
+# The extracted starter documents are versioned; keep the duplicate archive local.
+JellyPot_Starter_Docs.zip

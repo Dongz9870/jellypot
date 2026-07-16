@@ -1,0 +1,25 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JellyPot.App", "src\JellyPot.App\JellyPot.App.csproj", "{08D24D9A-DBD8-46EF-80D7-A69C72F02036}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JellyPot.Tests", "tests\JellyPot.Tests\JellyPot.Tests.csproj", "{F7AD9713-B55E-4BA5-854F-F54656E6C4F8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{08D24D9A-DBD8-46EF-80D7-A69C72F02036}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08D24D9A-DBD8-46EF-80D7-A69C72F02036}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08D24D9A-DBD8-46EF-80D7-A69C72F02036}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08D24D9A-DBD8-46EF-80D7-A69C72F02036}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7AD9713-B55E-4BA5-854F-F54656E6C4F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7AD9713-B55E-4BA5-854F-F54656E6C4F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7AD9713-B55E-4BA5-854F-F54656E6C4F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7AD9713-B55E-4BA5-854F-F54656E6C4F8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,101 @@
+<Window x:Class="JellyPot.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="JellyPot" Width="1440" Height="900" MinWidth="1080" MinHeight="700"
+        WindowStartupLocation="CenterScreen" Background="{StaticResource BackgroundBrush}">
+    <Grid>
+        <ContentControl Content="{Binding CurrentPage}"
+                        Visibility="{Binding IsAuthenticated, Converter={StaticResource InverseBoolToVisibility}}" />
+
+        <Grid Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolToVisibility}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="224" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="#0F1218" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <Grid Margin="18,22">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal" Margin="4,0,0,30">
+                        <Border Width="38" Height="38" CornerRadius="12" Background="{StaticResource AccentBrush}">
+                            <TextBlock Text="J" FontWeight="Black" FontSize="23" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="JellyPot" FontWeight="Bold" FontSize="18" />
+                            <TextBlock Text="L O C A L  M E D I A" Foreground="{StaticResource MutedTextBrush}" FontSize="8" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1">
+                        <Grid Margin="13,0,4,8">
+                            <TextBlock Text="媒体分类" Foreground="{StaticResource MutedTextBrush}" FontSize="11" VerticalAlignment="Center" />
+                            <Button Content="＋" Command="{Binding AddCategoryCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Right" Padding="6,2" MinHeight="24" ToolTip="添加自定义分类和片源" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding NavigationCategories}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Button Style="{StaticResource NavButton}" Command="{Binding DataContext.OpenCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"
+                                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}" ToolTip="右击可添加或自动扫描片源目录">
+                                            <Button.ContextMenu>
+                                                <ContextMenu DataContext="{Binding PlacementTarget, RelativeSource={RelativeSource Self}}">
+                                                    <MenuItem Header="手动添加扫描目录…" Command="{Binding Tag.ManualAddScanDirectoryCommand}" CommandParameter="{Binding DataContext}" />
+                                                    <MenuItem Header="自动扫描片源与同目录海报" Command="{Binding Tag.AutoScanCategoryCommand}" CommandParameter="{Binding DataContext}" />
+                                                    <Separator />
+                                                    <MenuItem Header="清除已保存的扫描目录" Command="{Binding Tag.ClearScanDirectoriesCommand}" CommandParameter="{Binding DataContext}" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Glyph}" Width="24" Foreground="{StaticResource MutedTextBrush}" />
+                                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" MaxWidth="122" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Content="×" Command="{Binding DataContext.RemoveCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"
+                                                Style="{StaticResource GhostButton}" Visibility="{Binding CanRemove, Converter={StaticResource BoolToVisibility}}"
+                                                HorizontalAlignment="Right" VerticalAlignment="Center" Padding="7,3" MinHeight="24" Foreground="{StaticResource MutedTextBrush}" ToolTip="删除分类" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="系统" Foreground="{StaticResource MutedTextBrush}" FontSize="11" Margin="13,26,0,8" />
+                        <Button Style="{StaticResource NavButton}" Command="{Binding SettingsCommand}" Content="⚙   设置与路径" />
+                    </StackPanel>
+
+                    <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" CornerRadius="10" Padding="12">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Border Width="30" Height="30" CornerRadius="15" Background="{StaticResource PurpleBrush}">
+                                <TextBlock Text="●" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="9,0,0,0">
+                                <TextBlock Text="{Binding UserDisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <Button Command="{Binding LogoutCommand}" Content="退出登录" Style="{StaticResource GhostButton}" Padding="0" MinHeight="18" HorizontalAlignment="Left" FontSize="11" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions><RowDefinition Height="72" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="30,0">
+                    <Grid>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding PageTitle}" FontSize="20" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding ServerName}" Foreground="{StaticResource MutedTextBrush}" FontSize="11" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="#17251F" CornerRadius="14" Padding="10,5">
+                            <TextBlock Text="●  本地直读" Foreground="{StaticResource SuccessBrush}" FontSize="11" />
+                        </Border>
+                    </Grid>
+                </Border>
+                <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
